@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Token Radar v3 — priced by launch odds, judged by net</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="mast">
+  <div>
+    <h1>Token Radar <span class="v3">v3</span></h1>
+    <p class="tag">Priced by launch odds, judged by net. Every protocol: (value if it launches) × (the chance it launches) — and the farm verdict comes from the net dollars, not the headline value.</p>
+    <p class="meta" id="meta">Snapshot 2026-11-14 · 758 protocols · no network, no hand-picked names</p>
+  </div>
+  <div class="how"><strong>How a row is priced</strong><br>implied = value if it launches × launch odds<br>net = (deposit / TVL) × implied × drop share − gas</div>
+</header>
+
+<section class="kpis" id="kpis" aria-label="Key figures"></section>
+
+<section class="controls">
+  <div class="ctl"><label>Plan size
+    <select id="planSize"><option value="1000" selected>$1,000</option><option value="10000">$10,000</option></select></label></div>
+  <div class="ctl"><label>Drop share
+    <select id="dropShare"><option value="0.035">3.5%</option><option value="0.07" selected>7%</option><option value="0.14">14%</option></select></label></div>
+  <div class="ctl"><label>Chain <select id="chainFilter"><option value="">All chains</option></select></label></div>
+  <div class="ctl"><label>Category <select id="catFilter"><option value="">All categories</option></select></label></div>
+  <div class="ctl"><label>Min TVL <select id="tvlFilter"><option value="0" selected>Any</option><option value="10000000">$10M+</option><option value="50000000">$50M+</option><option value="100000000">$100M+</option></select></label></div>
+  <div class="ctl"><label>7-day move <select id="moveFilter"><option value="" selected>Any</option><option value="up">Growing</option><option value="down">Falling</option></select></label></div>
+  <button id="summaryBtn" type="button">Show summary</button>
+  <button id="csvBtn" type="button">CSV</button>
+</section>
+
+<nav class="tabs" id="tabs" aria-label="Board views"></nav>
+<p class="count" id="count"></p>
+
+<main>
+  <table class="board" id="board">
+    <thead><tr>
+      <th data-sort="rank">#</th><th data-sort="name">Protocol</th><th data-sort="category">Category</th>
+      <th data-sort="tvl">TVL</th><th data-sort="change">7d</th><th data-sort="implied">Implied</th>
+      <th data-sort="odds">Odds</th><th data-sort="net">Net $</th><th data-sort="perhour">Net/h</th><th data-sort="verdict">Verdict</th>
+    </tr></thead>
+    <tbody id="boardBody"></tbody>
+  </table>
+
+  <section class="detail" id="detail" aria-label="Protocol detail"></section>
+
+  <section class="summary" id="summary" hidden></section>
+
+  <section class="method" id="method">
+    <h2>Method &amp; tests</h2>
+    <p><strong>The curve.</strong> <code>ln(mcap) = 7.545 + 0.50 × ln(TVL) + category offset</code>, fitted on 71 traded protocols whose token is a claim on their own TVL. The slope <strong>0.50 is a prior, not the OLS slope</strong> — the free OLS slope on these comps is 0.26, and across every defensible comp rule it runs 0.21–0.68, so the data cannot pin it down. The intercept and the shrunk offsets (n/(n+8)) are fitted at that slope. Multiple clamped to [0.08, 1.20]; growth factor 1 + clamp(7d change, −60, 120)/100 × 0.3.</p>
+    <p><strong>Launch odds.</strong> A hazard/survival model: <code>odds = [P(ever) − P(ever)·F(a)] / [1 − P(ever)·F(a)]</code>. P(ever) per category is the token rate divided by the mean launch-CDF over the category's ages, shrunk toward the pooled 0.56 with strength 15, capped at [0.05, 0.85]. F(a) is a Weibull (shape 0.80, scale 3000 days) fitted by maximum likelihood on the snapshot's current-status data. The cumulative token rate is <em>not</em> used as odds — it rises with age, which points backwards.</p>
+    <p><strong>The age term was tested and rejected.</strong> With ln(age) in the curve, leave-one-out is x2.77 vs x2.94 without it — but walk-forward is x5.80 vs x2.40. The age pattern is a cohort effect (young test protocols run 2× the train set's multiples) that does not travel forward. The ablation table below shows every variant tried.</p>
+    <div class="scatter" id="scatter" aria-label="Comps against the curve"></div>
+    <h3>Out-of-sample</h3>
+    <div id="validation"></div>
+    <h3>Ablation (leave-one-out median)</h3>
+    <div id="ablation"></div>
+    <h3>Rejected variants</h3>
+    <div id="rejected"></div>
+    <h3>Nearest traded comparables</h3>
+    <p>Each detail view names the three nearest traded protocols by distance in (ln TVL, ln age) — the anchors the curve is read against.</p>
+  </section>
+
+  <section class="ledger" id="ledger">
+    <h2>All 758 protocols, accounted for</h2>
+    <div id="ledgerBody"></div>
+  </section>
+</main>
+
+<footer>
+  <p>Model <span id="modelVer"></span> · Reproduce every number: <code>node main.ts --input &lt;snapshot&gt;</code> then <code>node scripts/check.mjs</code> — the program is deterministic (no clock, no randomness except a seeded bootstrap). No launch date is promised: the fitted launch-time distribution is long-tailed, so each plan gives a review date (2027-02-06) and a TVL exit rule instead.</p>
+</footer>
+<script src="../data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
